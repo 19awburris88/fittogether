@@ -63,3 +63,5 @@ router.post('/login', async (req, res, next) => {
     res.json({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email } });
   } catch (err) { next(err); }
 });
+
+module.exports = router;
