@@ -18,10 +18,10 @@ router.post('/subscribe', requireAuth, async (req, res, next) => {
     if (!subscription?.endpoint) return res.status(400).json({ error: 'subscription required' });
 
     await db.query(
-      `INSERT INTO push_subscriptions (user_id, subscription)
-       VALUES ($1, $2)
-       ON CONFLICT (user_id, endpoint) DO UPDATE SET subscription = $2`,
-      [req.user.id, JSON.stringify(subscription)]
+      `INSERT INTO push_subscriptions (user_id, endpoint, subscription)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, endpoint) DO UPDATE SET subscription = $3`,
+      [req.user.id, subscription.endpoint, JSON.stringify(subscription)]
     );
     res.json({ ok: true });
   } catch (err) { next(err); }
