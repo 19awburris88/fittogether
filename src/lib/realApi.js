@@ -106,6 +106,16 @@ export async function setAvatar(avatar) {
   return put('/me', { avatar });
 }
 
+// ── Couple invite / join ──────────────────────────────────────────────────
+
+export async function invitePartner() {
+  return post('/couples/invite');
+}
+
+export async function joinCouple(code) {
+  return post('/couples/join', { code });
+}
+
 // ── Auth helpers (used by Login/Register pages directly) ──────────────────
 
 export async function authLogin(email, password) {
@@ -114,4 +124,10 @@ export async function authLogin(email, password) {
 
 export async function authRegister(name, email, password) {
   return post('/auth/register', { name, email, password });
+}
+
+// ── Push notifications ────────────────────────────────────────────────────
+
+export async function subscribePush(subscription) {
+  return post('/push/subscribe', { subscription });
 }

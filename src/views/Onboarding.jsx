@@ -2,7 +2,7 @@ import { useState } from "react";
 import { v4 as uuid } from "uuid";
 import {
   Box, Button, Card, CardContent, Chip, Container, Grid, Stack,
-  TextField, Typography, LinearProgress,
+  TextField, Typography, LinearProgress, Tabs, Tab, CircularProgress,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
@@ -14,6 +14,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getOnboarding, setOnboarding } from "../lib/store";
+import { ds } from "../lib/dataSource";
 
 const EMERALD = "#10B981";
 const CORAL = "#FB7185";
@@ -89,17 +90,48 @@ export default function Onboarding({ onFinish }) {
   const existing = getOnboarding();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
-  const [partnerEmail, setPartnerEmail] = useState("");
   const [goals, setGoals] = useState(existing.goals || []);
-  const [inviteSent, setInviteSent] = useState(false);
+  // invite tab state
+  const [inviteTab, setInviteTab] = useState(0); // 0=invite, 1=join
+  const [inviteCode, setInviteCode] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
 
   const next = () => setStep((s) => Math.min(3, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
+  const handleGenerateCode = async () => {
+    setInviteLoading(true);
+    setInviteError("");
+    try {
+      const { code } = await ds.invitePartner();
+      setInviteCode(code);
+    } catch (e) {
+      setInviteError(e.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleJoinCouple = async () => {
+    if (!joinCode.trim()) return;
+    setInviteLoading(true);
+    setInviteError("");
+    try {
+      await ds.joinCouple(joinCode.trim().toUpperCase());
+      next();
+    } catch (e) {
+      setInviteError(e.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const finish = () => {
     const userId = existing.userId || uuid();
     const coupleId = existing.coupleId || uuid();
-    setOnboarding({ finished: true, userId, coupleId, goals, name, partnerEmail });
+    setOnboarding({ finished: true, userId, coupleId, goals, name });
     onFinish?.();
   };
 
@@ -243,51 +275,104 @@ export default function Onboarding({ onFinish }) {
             {/* Step 2 — Invite partner */}
             {step === 2 && (
               <Stack spacing={3}>
-                <Box
-                  sx={{
-                    width: 64, height: 64,
-                    bgcolor: "rgba(56,189,248,0.1)",
-                    border: "1px solid rgba(56,189,248,0.25)",
-                    borderRadius: "50%",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    mx: "auto",
-                  }}
-                >
-                  <PeopleIcon sx={{ fontSize: 28, color: "#38BDF8" }} />
-                </Box>
-
                 <Box textAlign="center">
+                  <Box
+                    sx={{
+                      width: 64, height: 64,
+                      bgcolor: "rgba(56,189,248,0.1)",
+                      border: "1px solid rgba(56,189,248,0.25)",
+                      borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      mx: "auto", mb: 2,
+                    }}
+                  >
+                    <PeopleIcon sx={{ fontSize: 28, color: "#38BDF8" }} />
+                  </Box>
                   <Typography variant="h5" fontWeight={800} sx={{ mb: 0.75 }}>
-                    Invite your partner
+                    Connect with your partner
                   </Typography>
                   <Typography sx={{ color: "#64748B", lineHeight: 1.7 }}>
-                    We'll send them an invite link. You can also skip and add them later from settings.
+                    Generate a code for your partner to enter, or enter theirs.
                   </Typography>
                 </Box>
 
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" sx={{ color: "#94A3B8" }}>Partner's email (optional)</Typography>
-                  <TextField
-                    placeholder="partner@email.com"
-                    value={partnerEmail}
-                    onChange={(e) => setPartnerEmail(e.target.value)}
-                    fullWidth
-                    type="email"
-                  />
-                </Stack>
+                <Tabs
+                  value={inviteTab}
+                  onChange={(_, v) => { setInviteTab(v); setInviteError(""); }}
+                  sx={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <Tab label="Invite partner" sx={{ fontSize: "0.8rem" }} />
+                  <Tab label="Join a couple" sx={{ fontSize: "0.8rem" }} />
+                </Tabs>
+
+                {inviteTab === 0 && (
+                  <Stack spacing={2}>
+                    {inviteCode ? (
+                      <Box
+                        sx={{
+                          background: "rgba(16,185,129,0.08)",
+                          border: "1px solid rgba(16,185,129,0.3)",
+                          borderRadius: 2, p: 2, textAlign: "center",
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ color: "#64748B", display: "block", mb: 0.5 }}>
+                          Share this code with your partner
+                        </Typography>
+                        <Typography variant="h4" fontWeight={900} sx={{ color: EMERALD, letterSpacing: 6 }}>
+                          {inviteCode}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#475569" }}>
+                          Valid for 7 days
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={handleGenerateCode}
+                        disabled={inviteLoading}
+                        startIcon={inviteLoading ? <CircularProgress size={16} /> : null}
+                      >
+                        Generate Invite Code
+                      </Button>
+                    )}
+                  </Stack>
+                )}
+
+                {inviteTab === 1 && (
+                  <Stack spacing={2}>
+                    <TextField
+                      placeholder="Enter 6-character code"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      inputProps={{ maxLength: 6, style: { letterSpacing: 4, fontWeight: 700, textTransform: "uppercase" } }}
+                      fullWidth
+                    />
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={handleJoinCouple}
+                      disabled={joinCode.length < 6 || inviteLoading}
+                      startIcon={inviteLoading ? <CircularProgress size={16} /> : null}
+                    >
+                      Join Couple
+                    </Button>
+                  </Stack>
+                )}
+
+                {inviteError && (
+                  <Typography variant="body2" sx={{ color: CORAL, textAlign: "center" }}>
+                    {inviteError}
+                  </Typography>
+                )}
 
                 <Stack direction="row" justifyContent="space-between">
                   <Button startIcon={<ArrowBackIcon />} onClick={back} sx={{ color: "#64748B" }}>
                     Back
                   </Button>
-                  <Stack direction="row" spacing={1.5}>
-                    <Button onClick={next} variant="outlined" sx={{ color: "#64748B", borderColor: "rgba(255,255,255,0.12)" }}>
-                      Skip for now
-                    </Button>
-                    <Button variant="contained" endIcon={<ArrowForwardIcon />} onClick={() => { setInviteSent(true); next(); }} disabled={!partnerEmail}>
-                      Send Invite
-                    </Button>
-                  </Stack>
+                  <Button onClick={next} variant="outlined" sx={{ color: "#64748B", borderColor: "rgba(255,255,255,0.12)" }}>
+                    {inviteCode ? "Continue" : "Skip for now"}
+                  </Button>
                 </Stack>
               </Stack>
             )}
@@ -314,7 +399,7 @@ export default function Onboarding({ onFinish }) {
                     Your couple profile is ready. Start with today's challenges and build your first streak together.
                   </Typography>
                 </Box>
-                {inviteSent && partnerEmail && (
+                {inviteCode && (
                   <Box
                     sx={{
                       background: "rgba(16,185,129,0.1)",
@@ -325,7 +410,7 @@ export default function Onboarding({ onFinish }) {
                     }}
                   >
                     <Typography variant="body2" sx={{ color: EMERALD }}>
-                      📨 Invite sent to {partnerEmail}
+                      🔗 Invite code: <strong style={{ letterSpacing: 3 }}>{inviteCode}</strong>
                     </Typography>
                   </Box>
                 )}

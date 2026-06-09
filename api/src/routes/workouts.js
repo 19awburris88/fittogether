@@ -1,6 +1,8 @@
 const router      = require('express').Router();
 const db          = require('../db');
 const requireAuth = require('../middleware/auth');
+let sendPush;
+setImmediate(() => { sendPush = require('./push').sendPush; });
 
 // GET /workouts — log for the authenticated user + their partner
 router.get('/', requireAuth, async (req, res, next) => {
@@ -59,6 +61,19 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     const entry = rows[0];
     await _pushActivity(req.user.id, `logged a ${entry.duration}-min ${entry.name}`);
+
+    // Notify partner
+    const coupleRes = await db.query(
+      'SELECT user1_id, user2_id FROM couples WHERE user1_id = $1 OR user2_id = $1',
+      [req.user.id]
+    );
+    if (coupleRes.rows.length && sendPush) {
+      const c = coupleRes.rows[0];
+      const partnerId = c.user1_id === req.user.id ? c.user2_id : c.user1_id;
+      const meRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+      const myName = meRes.rows[0]?.name || 'Your partner';
+      sendPush(partnerId, 'FitTogether 💪', `${myName} just logged a ${entry.duration}-min ${entry.name}!`).catch(() => {});
+    }
 
     res.status(201).json({ ...entry, userId: 'austin' });
   } catch (err) { next(err); }

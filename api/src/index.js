@@ -25,6 +25,7 @@ app.use('/wagers',     require('./routes/wagers'));
 app.use('/rewards',    require('./routes/rewards'));
 app.use('/activity',   require('./routes/activity'));
 app.use('/log',        require('./routes/log'));
+app.use('/push',       require('./routes/push'));
 
 // Health check
 app.get('/', (_, res) => res.json({ status: 'ok', app: 'fittogether-api' }));

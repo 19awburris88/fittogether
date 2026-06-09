@@ -1,24 +1,31 @@
 import { useState } from "react";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Box, Card, CardContent, TextField, Button, Typography, Stack, Alert, Divider,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import { loginUser } from "../lib/store";
+import { loginUser, setSession } from "../lib/store";
+import { authLogin } from "../lib/realApi";
+
+const useMock = import.meta.env.VITE_USE_MOCK !== "false";
 
 export default function Login() {
-  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      loginUser(email.trim(), password);
+      if (useMock) {
+        loginUser(email.trim(), password);
+      } else {
+        const { token, user } = await authLogin(email.trim(), password);
+        setSession({ token, ...user });
+      }
       window.location.href = "/app";
     } catch (err) {
       setError(err.message);

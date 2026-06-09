@@ -4,7 +4,10 @@ import {
   Box, Card, CardContent, TextField, Button, Typography, Stack, Alert, Divider,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import { registerUser } from "../lib/store";
+import { registerUser, setSession } from "../lib/store";
+import { authRegister } from "../lib/realApi";
+
+const useMock = import.meta.env.VITE_USE_MOCK !== "false";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -14,14 +17,19 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     setError("");
     if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
     setLoading(true);
     try {
-      registerUser(name.trim(), email.trim(), password);
+      if (useMock) {
+        registerUser(name.trim(), email.trim(), password);
+      } else {
+        const { token, user } = await authRegister(name.trim(), email.trim(), password);
+        setSession({ token, ...user });
+      }
       window.location.href = "/onboarding";
     } catch (err) {
       setError(err.message);

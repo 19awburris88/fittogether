@@ -33,4 +33,8 @@ export const ds = {
 
   // progress charts
   getHistory:      (...a) => useMock ? mock.getHistory(...a)      : api.getHistory(...a),
+
+  // couple linking
+  invitePartner: () => useMock ? Promise.resolve({ code: 'MOCK01' }) : api.invitePartner(),
+  joinCouple:    (...a) => useMock ? Promise.resolve({ coupleId: 'mock' }) : api.joinCouple(...a),
 };

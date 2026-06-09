@@ -11,11 +11,13 @@ import SettingsIcon      from "@mui/icons-material/Settings";
 import FavoriteIcon      from "@mui/icons-material/Favorite";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { usePushNotifications } from "../lib/usePush";
 
 const tabs = ["/app", "/app/workouts", "/app/challenges", "/app/progress", "/app/profile"];
 const BN_HEIGHT = 72;
 
 export default function AppShell({ children }) {
+  usePushNotifications();
   const nav = useNavigate();
   const loc = useLocation();
   const [value, setValue] = useState(0);
