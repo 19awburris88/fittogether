@@ -1,0 +1,18 @@
+:root {
+  --emerald: #10B981;
+  --navy: #0F172A;
+  --paper: #1E293B;
+  --coral: #FB7185;
+  --gold: #F59E0B;
+  --slate: #64748B;
+}
+
+body {
+  background: #0F172A;
+  display: block;
+  place-items: unset;
+}
+
+#root {
+  min-height: 100vh;
+}
