@@ -2,7 +2,7 @@
 
 **Couples fitness platform — gamified workouts, challenges, and streaks for two.**
 
-Live demo → [fittogether-mauve.vercel.app](https://fittogether-mauve.vercel.app)
+Live → [fittogether-mauve.vercel.app](https://fittogether-mauve.vercel.app)
 
 ---
 
@@ -10,19 +10,19 @@ Live demo → [fittogether-mauve.vercel.app](https://fittogether-mauve.vercel.ap
 
 FitTogether is a web app built for couples who want to train together, stay accountable, and make fitness competitive and fun. Partners share challenges, track streaks, log workouts, earn FitCoins, and compete in head-to-head side bets.
 
-The current version is a fully functional frontend with mock data and localStorage persistence. A real backend (Node/Express + PostgreSQL) is the planned next phase.
+The app runs on a real Node/Express + PostgreSQL backend (hosted on Railway) with JWT authentication, live data, and Web Push notifications.
 
 ---
 
 ## Features
 
 ### Public
-- **Marketing landing page** — full 10-section site with hero, stats, feature breakdown, how it works, challenges preview, testimonials, pricing, and CTA
-- **Auth** — Register and Login with localStorage-based sessions
+- **Marketing landing page** — 10-section site with hero, stats, features, how it works, challenges preview, testimonials, pricing, and CTA
+- **Auth** — Register and Login with JWT sessions (real database, bcrypt-hashed passwords)
 
 ### Onboarding
 - 4-step flow: Welcome → Goals → Invite Partner → All Set
-- Goal selection, partner email invite, progress bar
+- Partner invite: generate a 6-character code or join with a partner's code
 
 ### App (authenticated)
 | Route | View | Description |
@@ -33,19 +33,24 @@ The current version is a fully functional frontend with mock data and localStora
 | `/app/challenges/:id` | Challenge Detail | Individual challenge breakdown |
 | `/app/rewards` | Rewards Store | Spend FitCoins to unlock real rewards |
 | `/app/progress` | Progress | Bar chart (weekly workouts), area chart (daily steps), stat cards |
-| `/app/profile` | Profile | Couple header, stats grid, data-driven achievement badges, avatar picker |
-| `/app/settings` | Settings | Name, partner name, goals, notifications, units, sign out, reset |
+| `/app/profile` | Profile | Couple header, stats grid, achievement badges, avatar picker |
+| `/app/settings` | Settings | Name, partner name, goals, notifications, units, sign out |
 
 ### Gamification
-- **FitCoins** — earned through challenge completions, spendable in the Rewards Store
-- **Streaks** — couple streak counter displayed on Dashboard and Profile
-- **Achievements** — badges computed from real activity (streak length, workout count, FitCoins balance, weight lost)
+- **FitCoins** — +10 per workout logged, +5 when hitting 8 glasses of water; spendable in the Rewards Store
+- **Couple streaks** — auto-increments on daily activity, resets if a day is missed
+- **Achievements** — badges computed from real activity (streak length, workout count, FitCoins balance)
 - **Side bets / Wagers** — set tangible stakes (e.g. "winner picks dinner"), track day-by-day step goals
+
+### Notifications
+- Web Push notifications when your partner logs a workout
+- Service worker at `public/sw.js`, VAPID key-based subscription
 
 ---
 
 ## Tech Stack
 
+### Frontend
 | Layer | Technology |
 |---|---|
 | Framework | React 19 + Vite 7 |
@@ -54,10 +59,16 @@ The current version is a fully functional frontend with mock data and localStora
 | Data fetching | TanStack React Query v5 |
 | Charts | Recharts |
 | Animation | Framer Motion v12 |
-| Dates | Day.js |
-| IDs | UUID |
-| Data layer | Mock API (`src/lib/mock.js`) with localStorage persistence |
-| Deployment | Vercel (auto-deploy from GitHub `main`) |
+| Deployment | Vercel (auto-deploy from `main`) |
+
+### Backend
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js + Express |
+| Database | PostgreSQL (via `pg`) |
+| Auth | JWT (`jsonwebtoken`) + bcryptjs |
+| Push | Web Push (`web-push`, VAPID) |
+| Deployment | Railway |
 
 ### Brand Colors
 | Name | Hex |
@@ -72,38 +83,55 @@ The current version is a fully functional frontend with mock data and localStora
 ## Project Structure
 
 ```
-src/
-├── lib/
-│   ├── mock.js          # In-memory mock API with localStorage persistence
-│   ├── dataSource.js    # API switch (mock vs real) via VITE_USE_MOCK env var
-│   └── store.js         # localStorage helpers (auth session, onboarding, settings)
-├── pages/
-│   ├── Landing.jsx      # Full marketing landing page
-│   ├── Login.jsx        # Login page
-│   └── Register.jsx     # Registration page
-├── views/
-│   ├── Dashboard.jsx
-│   ├── WorkoutLog.jsx
-│   ├── Challenges.jsx
-│   ├── ChallengeDetail.jsx
-│   ├── Rewards.jsx
-│   ├── Progress.jsx
-│   ├── Profile.jsx
-│   ├── Settings.jsx
-│   └── Onboarding.jsx
-├── ui/
-│   ├── AppShell.jsx         # Top nav + bottom nav (5 tabs)
-│   ├── LogModal.jsx         # Quick water/workout log modal
-│   ├── ActivityFeed.jsx     # Live activity feed component
-│   ├── AvatarPickerModal.jsx
-│   ├── CreateChallengeModal.jsx
-│   ├── CreateWagerModal.jsx
-│   ├── ConfirmDialog.jsx
-│   ├── Toast.jsx            # Toast notification provider
-│   └── Page.jsx             # Page wrapper
-├── theme.js             # MUI theme with brand colors
-├── main.jsx             # App entry point + router
-└── styles.css           # Global styles
+fittogether/
+├── src/                         # React frontend
+│   ├── lib/
+│   │   ├── mock.js              # In-memory mock API (dev/offline)
+│   │   ├── realApi.js           # Fetch-based real API client
+│   │   ├── dataSource.js        # Switches mock ↔ real via VITE_USE_MOCK
+│   │   ├── usePush.js           # Web Push subscription hook
+│   │   └── store.js             # localStorage helpers
+│   ├── pages/
+│   │   ├── Landing.jsx
+│   │   ├── Login.jsx
+│   │   └── Register.jsx
+│   ├── views/
+│   │   ├── Dashboard.jsx
+│   │   ├── WorkoutLog.jsx
+│   │   ├── Challenges.jsx
+│   │   ├── Rewards.jsx
+│   │   ├── Progress.jsx
+│   │   ├── Profile.jsx
+│   │   ├── Settings.jsx
+│   │   └── Onboarding.jsx
+│   ├── ui/                      # Shared components
+│   └── main.jsx
+├── public/
+│   └── sw.js                    # Service worker (push notifications)
+├── api/                         # Node/Express backend (deployed to Railway)
+│   ├── src/
+│   │   ├── index.js             # Express app entry point
+│   │   ├── db.js                # PostgreSQL pool
+│   │   ├── lib/
+│   │   │   └── coins.js         # FitCoins + streak logic
+│   │   ├── middleware/
+│   │   │   └── auth.js          # JWT middleware
+│   │   └── routes/
+│   │       ├── auth.js          # POST /auth/register, /auth/login
+│   │       ├── couples.js       # Partner invite + join
+│   │       ├── dashboard.js     # GET /dashboard
+│   │       ├── workouts.js      # Workout log CRUD
+│   │       ├── challenges.js    # Challenges
+│   │       ├── wagers.js        # Side bets
+│   │       ├── rewards.js       # Rewards store + redemption
+│   │       ├── activity.js      # Activity feed
+│   │       ├── history.js       # Chart data (weekly workouts, steps, streaks)
+│   │       ├── log.js           # Water + steps logging
+│   │       ├── push.js          # Web Push subscriptions
+│   │       └── me.js            # Profile updates
+│   ├── schema.sql               # Full database schema
+│   └── package.json
+└── vercel.json                  # SPA rewrite rules
 ```
 
 ---
@@ -112,9 +140,9 @@ src/
 
 ### Prerequisites
 - Node.js 18+
-- npm
+- PostgreSQL (local) or a Railway Postgres instance
 
-### Install & Run
+### Frontend
 
 ```bash
 git clone https://github.com/19awburris88/fittogether.git
@@ -123,60 +151,77 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173`
-
-### Build
-
+Create a `.env.local`:
 ```bash
-npm run build
-npm run preview
+VITE_USE_MOCK=false
+VITE_API_URL=http://localhost:3001
+VITE_VAPID_PUBLIC_KEY=<your_vapid_public_key>
 ```
 
-### Demo Account
-
-A hardcoded demo account is always available:
-
-| Field | Value |
-|---|---|
-| Email | `austin@fittogether.com` |
-| Password | `admin123` |
-
----
-
-## Data Layer
-
-The data layer is designed to switch between mock and real API with a single environment variable:
+### Backend
 
 ```bash
-# .env.local
-VITE_USE_MOCK=false   # switch to real API (default: true)
+cd api
+npm install
 ```
 
-All mock functions are in `src/lib/mock.js`. The `src/lib/dataSource.js` file exports a `ds` object that all views import — replacing the mock with a real API only requires implementing the same function signatures in a `realApi.js` file.
+Create `api/.env`:
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/fittogether
+JWT_SECRET=your_secret_here
+FRONTEND_URL=http://localhost:5173
+VAPID_PUBLIC_KEY=<your_vapid_public_key>
+VAPID_PRIVATE_KEY=<your_vapid_private_key>
+VAPID_EMAIL=you@example.com
+```
 
-Mock state persists across page refreshes via `localStorage` under the key `ft_mock_state`.
+Run the schema:
+```bash
+psql $DATABASE_URL -f api/schema.sql
+```
+
+Start the API:
+```bash
+npm run dev   # nodemon, port 3001
+```
+
+### Generate VAPID keys
+```bash
+cd api && node -e "const wp=require('web-push'); const k=wp.generateVAPIDKeys(); console.log(k)"
+```
 
 ---
 
 ## Deployment
 
-Deployed on Vercel with automatic deployments from the `main` branch.
+| Service | Platform | Notes |
+|---|---|---|
+| Frontend | Vercel | Auto-deploys from `main`; `api/` is excluded via `.vercelignore` |
+| Backend API | Railway | Start command: `node api/src/index.js` |
+| Database | Railway PostgreSQL | `DATABASE_URL` linked as a variable reference |
 
-`vercel.json` rewrites all routes to `index.html` for client-side routing:
+### Required Railway env vars
+```
+DATABASE_URL        (linked from Postgres service)
+JWT_SECRET
+FRONTEND_URL        (your Vercel URL)
+PORT                3001
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_EMAIL
+```
 
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
+### Required Vercel env vars
+```
+VITE_USE_MOCK       false
+VITE_API_URL        https://your-railway-api-url.railway.app
+VITE_VAPID_PUBLIC_KEY
 ```
 
 ---
 
 ## Roadmap
 
-- [ ] **Real backend** — Node/Express + PostgreSQL + JWT auth
-- [ ] **Partner linking** — invite code system to connect two real accounts
-- [ ] **Live streak logic** — auto-increment/reset based on daily activity
-- [ ] **Push notifications** — streak reminders, partner activity alerts
-- [ ] **Apple Health / Google Fit integration** — auto-import workouts and steps
-- [ ] **Custom domain**
+- [ ] Apple Health / Google Fit integration — auto-import workouts and steps
+- [ ] Custom domain (fittogether.dev)
+- [ ] Mobile app (React Native)
