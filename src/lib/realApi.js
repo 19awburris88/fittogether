@@ -90,8 +90,7 @@ export async function addWorkoutEntry({ name, type, duration, notes }) {
 // ── Progress / history ────────────────────────────────────────────────────
 
 export async function getHistory() {
-  // Reuse dashboard payload for charts — both use the same steps/week data
-  return get('/dashboard');
+  return get('/history');
 }
 
 // ── Activity feed ─────────────────────────────────────────────────────────

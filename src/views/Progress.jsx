@@ -51,7 +51,7 @@ export default function Progress() {
   const { data, isLoading } = useQuery({ queryKey: ["history"], queryFn: ds.getHistory });
 
   const totalWorkouts = (data?.weeklyWorkouts || []).reduce((s, w) => s + (w.austin || 0), 0);
-  const bestStreak    = data ? Math.max(...data.streakHistory) : 0;
+  const bestStreak    = data ? Math.max(...(data.streakHistory?.length ? data.streakHistory : [0])) : 0;
   const thisWeek      = data?.weeklyWorkouts?.at(-1)?.austin ?? "—";
   const activeSteps   = (data?.dailySteps || []).filter((d) => d.austin > 0);
   const avgSteps      = activeSteps.length
