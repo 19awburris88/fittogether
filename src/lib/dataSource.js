@@ -7,8 +7,12 @@ const useMock = import.meta.env.VITE_USE_MOCK !== "false";
 export const ds = {
   // dashboard + core logs
   getDashboard:  (...a) => useMock ? mock.getDashboard(...a)  : api.getDashboard(...a),
-  addWater:      (...a) => useMock ? mock.addWater(...a)      : api.addWater(...a),
-  logWorkout:    (...a) => useMock ? mock.logWorkout(...a)    : api.logWorkout(...a),
+  addWater:      (arg)  => useMock
+    ? mock.addWater(typeof arg === 'string' ? arg : arg?.userId)
+    : api.addWater(arg),
+  logWorkout:    (arg, legacyDuration) => useMock
+    ? mock.logWorkout(typeof arg === 'string' ? arg : arg?.userId, typeof arg === 'string' ? legacyDuration : arg?.duration)
+    : api.logWorkout(arg),
 
   // challenges/rewards/activity
   getChallenges: (...a) => useMock ? mock.getChallenges(...a) : api.getChallenges(...a),

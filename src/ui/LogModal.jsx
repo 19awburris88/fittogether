@@ -7,31 +7,37 @@ import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import { ds } from "../lib/dataSource";
 
-export default function LogModal({ open, onClose, type = "water" /* or 'workout' */ }) {
-  const [qty, setQty] = useState(type === "water" ? 1 : 1); // water = glasses, workout = sessions
-  const [minutes, setMinutes] = useState(20); // per workout session
-  const [who, setWho] = useState("austin"); // austin | partner
+const useMock = import.meta.env.VITE_USE_MOCK !== "false";
+
+export default function LogModal({ open, onClose, type = "water" }) {
+  const [qty, setQty] = useState(1);
+  const [minutes, setMinutes] = useState(20);
+  const [who, setWho] = useState("austin");
 
   const isWater = type === "water";
 
-  const quickAdd = (val) => setQty(val);
-
   const submit = async () => {
-    // Keep mock simple: call the underlying method qty times
+    let coinsEarned = 0;
     if (isWater) {
-      for (let i = 0; i < qty; i++) { /* eslint-disable no-await-in-loop */
-        await ds.addWater(who);
+      if (useMock) {
+        for (let i = 0; i < qty; i++) await ds.addWater(who);
+      } else {
+        const res = await ds.addWater({ userId: who, glasses: qty });
+        coinsEarned = res?.coinsEarned ?? 0;
       }
     } else {
-      for (let i = 0; i < qty; i++) {
-        await ds.logWorkout(who, minutes);
+      if (useMock) {
+        for (let i = 0; i < qty; i++) await ds.logWorkout(who, minutes);
+      } else {
+        const res = await ds.logWorkout({ name: "Workout", type: "other", duration: minutes });
+        coinsEarned = res?.coinsEarned ?? 0;
       }
     }
-    onClose?.(true);
+    onClose?.({ saved: true, coinsEarned });
   };
 
   return (
-    <Dialog open={open} onClose={() => onClose?.(false)} fullWidth maxWidth="xs">
+    <Dialog open={open} onClose={() => onClose?.({ saved: false })} fullWidth maxWidth="xs">
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         {isWater ? <LocalDrinkIcon color="primary" /> : <FitnessCenterIcon color="secondary" />}
         {isWater ? "Log Water" : "Log Workout"}
@@ -39,25 +45,27 @@ export default function LogModal({ open, onClose, type = "water" /* or 'workout'
 
       <DialogContent>
         <Stack spacing={2}>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Who</Typography>
-            <ToggleButtonGroup
-              exclusive
-              value={who}
-              onChange={(_, v) => v && setWho(v)}
-              fullWidth
-            >
-              <ToggleButton value="austin">Austin</ToggleButton>
-              <ToggleButton value="partner">Partner</ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+          {useMock && (
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Who</Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={who}
+                onChange={(_, v) => v && setWho(v)}
+                fullWidth
+              >
+                <ToggleButton value="austin">Austin</ToggleButton>
+                <ToggleButton value="partner">Partner</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          )}
 
           {isWater ? (
             <>
               <Typography variant="subtitle2">Glasses to log</Typography>
               <Stack direction="row" spacing={1}>
                 {[1, 2, 3].map(n => (
-                  <Button key={n} variant={qty === n ? "contained" : "outlined"} onClick={() => quickAdd(n)}>{`+${n}`}</Button>
+                  <Button key={n} variant={qty === n ? "contained" : "outlined"} onClick={() => setQty(n)}>{`+${n}`}</Button>
                 ))}
               </Stack>
               <TextField
@@ -73,7 +81,7 @@ export default function LogModal({ open, onClose, type = "water" /* or 'workout'
               <Typography variant="subtitle2">Workouts to log</Typography>
               <Stack direction="row" spacing={1}>
                 {[1, 2].map(n => (
-                  <Button key={n} variant={qty === n ? "contained" : "outlined"} onClick={() => quickAdd(n)}>{`+${n}`}</Button>
+                  <Button key={n} variant={qty === n ? "contained" : "outlined"} onClick={() => setQty(n)}>{`+${n}`}</Button>
                 ))}
               </Stack>
               <TextField
@@ -89,7 +97,7 @@ export default function LogModal({ open, onClose, type = "water" /* or 'workout'
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={() => onClose?.(false)}>Cancel</Button>
+        <Button onClick={() => onClose?.({ saved: false })}>Cancel</Button>
         <Button variant="contained" onClick={submit}>Save</Button>
       </DialogActions>
     </Dialog>

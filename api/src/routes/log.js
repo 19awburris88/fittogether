@@ -2,6 +2,7 @@ const router      = require('express').Router();
 const db          = require('../db');
 const requireAuth = require('../middleware/auth');
 const { _pushActivity } = require('./workouts');
+const { addCoins, updateCoupleStreak, COINS_WATER_GOAL, WATER_GOAL } = require('../lib/coins');
 
 // POST /log/water — record water glasses for today
 router.post('/water', requireAuth, async (req, res, next) => {
@@ -10,6 +11,14 @@ router.post('/water', requireAuth, async (req, res, next) => {
     if (glasses == null) return res.status(400).json({ error: 'glasses is required' });
 
     const today = new Date().toISOString().slice(0, 10);
+
+    // Get previous count so we only award coins once when goal is first crossed
+    const prev = await db.query(
+      'SELECT water_glasses FROM daily_metrics WHERE user_id = $1 AND date = $2',
+      [req.user.id, today]
+    );
+    const prevGlasses = prev.rows[0]?.water_glasses ?? 0;
+
     const { rows } = await db.query(
       `INSERT INTO daily_metrics (user_id, date, water_glasses)
        VALUES ($1, $2, $3)
@@ -18,7 +27,15 @@ router.post('/water', requireAuth, async (req, res, next) => {
        RETURNING user_id, date, water_glasses, steps`,
       [req.user.id, today, glasses]
     );
-    res.json(rows[0]);
+
+    let coinsEarned = 0;
+    if (prevGlasses < WATER_GOAL && glasses >= WATER_GOAL) {
+      await addCoins(req.user.id, COINS_WATER_GOAL);
+      await updateCoupleStreak(req.user.id);
+      coinsEarned = COINS_WATER_GOAL;
+    }
+
+    res.json({ ...rows[0], coinsEarned });
   } catch (err) { next(err); }
 });
 

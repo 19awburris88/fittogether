@@ -130,13 +130,17 @@ export default function Dashboard() {
 
   const coins = data?.wallet?.coins ?? 0;
 
-  const closeModal = (didSave) => {
+  const closeModal = ({ saved, coinsEarned } = {}) => {
     setLogType(null);
-    if (didSave) {
+    if (saved) {
       qc.invalidateQueries({ queryKey: ["dash"] });
       qc.invalidateQueries({ queryKey: ["challenges"] });
       qc.invalidateQueries({ queryKey: ["activity"] });
-      push("Progress logged!", "success");
+      if (coinsEarned > 0) {
+        push(`💰 +${coinsEarned} FitCoins earned!`, "success");
+      } else {
+        push("Progress logged!", "success");
+      }
     }
   };
 

@@ -1,6 +1,7 @@
 const router      = require('express').Router();
 const db          = require('../db');
 const requireAuth = require('../middleware/auth');
+const { addCoins, updateCoupleStreak, COINS_PER_WORKOUT } = require('../lib/coins');
 let sendPush;
 setImmediate(() => { sendPush = require('./push').sendPush; });
 
@@ -61,6 +62,8 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     const entry = rows[0];
     await _pushActivity(req.user.id, `logged a ${entry.duration}-min ${entry.name}`);
+    await addCoins(req.user.id, COINS_PER_WORKOUT);
+    const newStreak = await updateCoupleStreak(req.user.id);
 
     // Notify partner
     const coupleRes = await db.query(
@@ -75,7 +78,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       sendPush(partnerId, 'FitTogether 💪', `${myName} just logged a ${entry.duration}-min ${entry.name}!`).catch(() => {});
     }
 
-    res.status(201).json({ ...entry, userId: 'austin' });
+    res.status(201).json({ ...entry, userId: 'austin', coinsEarned: COINS_PER_WORKOUT, streakDays: newStreak });
   } catch (err) { next(err); }
 });
 
