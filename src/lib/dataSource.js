@@ -1,6 +1,6 @@
 // Single switch to move between mock and real API later.
 import * as mock from "./mock";
-// import * as api from "./realApi"; // keep placeholder for future backend
+import * as api  from "./realApi";
 
 const useMock = import.meta.env.VITE_USE_MOCK !== "false";
 
